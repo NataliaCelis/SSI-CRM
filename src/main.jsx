@@ -5,7 +5,6 @@ import AcceptInvitePage from './pages/AcceptInvitePage';
 import { AuthProvider } from './lib/AuthContext';
 import './index.css';
 
-// If the URL has a Supabase invite/recovery token, show the set-password page
 const hash = window.location.hash;
 const isInvite = hash.includes('type=invite') || hash.includes('type=recovery');
 
