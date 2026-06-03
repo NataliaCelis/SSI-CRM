@@ -119,3 +119,4 @@ export default function AddProjectModal({ staff, allCompanies = [], onClose, onC
     </div>
   );
 }
+// Distance auto-calc is handled server-side in useData normalizeProjects

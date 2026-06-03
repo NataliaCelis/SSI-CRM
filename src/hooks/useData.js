@@ -3,7 +3,8 @@ import {
   fetchProjects, fetchAllStaff, fetchAllCompanies,
   updateProject, updateProjectStage, createProject, softDeleteProject,
   upsertAward, upsertProjectCompanies, addNote, softDeleteNote,
-  addTask, updateTask, softDeleteTask, getNextENumber, fetchAppSettings, updateAppSetting,
+  addTask, updateTask, softDeleteTask, getNextENumber,
+  fetchAppSettings, updateAppSetting, calcDistanceFromChatt,
 } from '../lib/supabase';
 
 export function useProjects() {
@@ -22,18 +23,70 @@ export function useProjects() {
 
   const actions = {
     create: async (d) => { await createProject(d); await load(); },
-    update: async (id, upd) => { await updateProject(id, upd); await load(); },
-    updateStage: async (id, stage) => { await updateProjectStage(id, stage); setProjects(ps => ps.map(p => p.id === id ? { ...p, stage } : p)); },
-    delete: async (id, deletedById) => { await softDeleteProject(id, deletedById); setProjects(ps => ps.filter(p => p.id !== id)); },
-    upsertAward: async (projectId, awardData) => { await upsertAward(projectId, awardData); await load(); },
-    upsertCompanies: async (projectId, companies) => { await upsertProjectCompanies(projectId, companies); await load(); },
-    addNote: async (projectId, staffId, roleLabel, text) => { const n = await addNote(projectId, staffId, roleLabel, text); await load(); return n; },
-    deleteNote: async (projectId, noteId, deletedById) => { await softDeleteNote(noteId, deletedById); await load(); },
-    addTask: async (projectId, task) => { const t = await addTask(projectId, task); await load(); return t; },
-    updateTask: async (projectId, taskId, upd) => { await updateTask(taskId, upd); await load(); },
-    deleteTask: async (projectId, taskId, deletedById) => { await softDeleteTask(taskId, deletedById); await load(); },
+
+    // Handles both project fields AND award fields (prefixed with _award)
+    update: async (id, updates) => {
+      const { _award, _awardedGC, ...projectFields } = updates;
+
+      // Remap front-end keys to DB column names
+      const dbFields = {};
+      const keyMap = {
+        project_name: 'project_name', project_type: 'project_type',
+        city: 'city', state: 'state', bid_date: 'bid_date',
+        addenda: 'addenda', tonnage: 'tonnage', ssi_price: 'ssi_price',
+        fab_cost: 'fab_cost', erect_cost: 'erect_cost',
+        sales_tax: 'sales_tax', prevailing_wages: 'prevailing_wages',
+        distance_miles: 'distance_miles', follow_up_date: 'follow_up_date',
+        prequal: 'prequal', stage: 'stage', e_number: 'e_number',
+      };
+      for (const [k, v] of Object.entries(projectFields)) {
+        if (keyMap[k]) dbFields[keyMap[k]] = v;
+      }
+
+      if (Object.keys(dbFields).length) await updateProject(id, dbFields);
+
+      if (_award) {
+        await upsertAward(id, _award);
+      }
+
+      await load();
+    },
+
+    updateStage: async (id, stage) => {
+      await updateProjectStage(id, stage);
+      setProjects(ps => ps.map(p => p.id === id ? { ...p, stage } : p));
+    },
+    delete: async (id, deletedById) => {
+      await softDeleteProject(id, deletedById);
+      setProjects(ps => ps.filter(p => p.id !== id));
+    },
+    upsertCompanies: async (projectId, companies) => {
+      await upsertProjectCompanies(projectId, companies);
+      await load();
+    },
+    addNote: async (projectId, staffId, roleLabel, text) => {
+      await addNote(projectId, staffId, roleLabel, text);
+      await load();
+    },
+    deleteNote: async (projectId, noteId, deletedById) => {
+      await softDeleteNote(noteId, deletedById);
+      await load();
+    },
+    addTask: async (projectId, task) => {
+      await addTask(projectId, task);
+      await load();
+    },
+    updateTask: async (projectId, taskId, upd) => {
+      await updateTask(taskId, upd);
+      await load();
+    },
+    deleteTask: async (projectId, taskId, deletedById) => {
+      await softDeleteTask(taskId, deletedById);
+      await load();
+    },
     reload: load,
   };
+
   return { projects, loading, error, actions };
 }
 
@@ -66,7 +119,7 @@ export function useAppSettings() {
   const reload = useCallback(() => { fetchAppSettings().then(setSettings).catch(console.error); }, []);
   useEffect(() => { reload(); }, [reload]);
   const save = async (key, value) => { await updateAppSetting(key, value); reload(); };
-  return { settings, save, reload };
+  return { settings, save };
 }
 
 function normalizeProjects(raw) {
@@ -89,22 +142,33 @@ function normalizeProjects(raw) {
       assigneeId: t.assignee_id, assignedBy: t.assigned_by?.name || '',
       dueDate: t.due_date, status: t.status,
     }));
+
+    // Auto-calc distance
+    const autoDist = calcDistanceFromChatt(p.city, p.state);
+    const distMiles = p.distance_miles || autoDist;
+
     return {
       id: p.id, eName: p.e_number || '', name: p.project_name || '',
       type: p.project_type || '', estimator: p.estimator?.name?.toUpperCase() || '',
       estimatorId: p.estimator_id, city: p.city || '', state: p.state || '',
       bidDate: p.bid_date || '', addenda: p.addenda || 0, tonnage: p.tonnage || 0,
       ssiPrice: p.ssi_price || 0, stage: p.stage,
-      distance: p.distance_miles ? `${p.distance_miles} Miles` : '',
+      distance: distMiles ? `${distMiles} Miles` : '',
+      distance_miles: distMiles,
       salesTax: p.sales_tax || '', prevWages: p.prevailing_wages || '',
       fabCost: p.fab_cost || 0, erectCost: p.erect_cost || 0,
       followUpDate: p.follow_up_date || '', prequal: p.prequal || '',
-      awardedGC: awardObj?.awarded_gc?.name || '', awardedGCId: awardObj?.awarded_gc_id || '',
+      awardedGC: awardObj?.awarded_gc?.name || '',
+      awardedGCId: awardObj?.awarded_gc_id || '',
       awardedGCContact: awardObj?.awarded_gc_contact_name || '',
-      awardedGCPhone: awardObj?.awarded_gc_phone || '', awardedGCEmail: awardObj?.awarded_gc_email || '',
-      awardedSub: awardObj?.steel_sub || '', awardedPrice: awardObj?.awarded_price || 0,
-      awardNotes: awardObj?.award_notes || '', ourTonnage: awardObj?.our_tonnage || 0,
-      winnerTonnage: awardObj?.winning_sub_tonnage || 0, winnerPrice: awardObj?.winning_sub_price || 0,
+      awardedGCPhone: awardObj?.awarded_gc_phone || '',
+      awardedGCEmail: awardObj?.awarded_gc_email || '',
+      awardedSub: awardObj?.steel_sub || '',
+      awardedPrice: awardObj?.awarded_price || 0,
+      awardNotes: awardObj?.award_notes || '',
+      ourTonnage: awardObj?.our_tonnage || 0,
+      winnerTonnage: awardObj?.winning_sub_tonnage || 0,
+      winnerPrice: awardObj?.winning_sub_price || 0,
       companies, notes, tasks,
     };
   });
