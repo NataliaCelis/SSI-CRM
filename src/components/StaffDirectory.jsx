@@ -6,8 +6,12 @@ const ALL_ROLES = ['Manager', 'Sales Manager', 'Estimator', 'Sales'];
 
 export default function StaffDirectory({ staff, onClose, onSave }) {
   const { isFullManager, isManager, staff: currentStaff } = useAuth();
-  const canEdit = isManager; // Sales managers can also edit
-  const [list, setList] = useState(staff.map(s => ({ ...s, roles: s.roles || [] })));
+  const canEdit = isManager;
+  // Hide hidden admin accounts from the visible directory
+  const HIDDEN_EMAILS = ['nataliaisabelcelis@gmail.com'];
+  const [list, setList] = useState(
+    staff.filter(s => !HIDDEN_EMAILS.includes(s.email)).map(s => ({ ...s, roles: s.roles || [] }))
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');

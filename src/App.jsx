@@ -167,8 +167,21 @@ export default function App() {
   }), [filtered, sortBy, sortDir]);
 
   const handleSort = col => { if (sortBy === col) setSortDir(d => d === 'asc' ? 'desc' : 'asc'); else { setSortBy(col); setSortDir('asc'); } };
-  const clearFilters = () => { setFilterGC(''); setFilterContact(''); setFilterAwardedGC(''); setFilterSteelSub(''); setFilterPriceMin(''); setFilterPriceMax(''); setFilterDateFrom(''); setFilterDateTo(''); };
-  const activeFilterCount = [filterGC, filterContact, filterAwardedGC, filterSteelSub, filterPriceMin, filterPriceMax, filterDateFrom, filterDateTo].filter(Boolean).length;
+  const clearFilters = () => {
+    setSearch('');
+    setFilterEstimator('');
+    setFilterStage('');
+    setFilterState('');
+    setFilterGC('');
+    setFilterContact('');
+    setFilterAwardedGC('');
+    setFilterSteelSub('');
+    setFilterPriceMin('');
+    setFilterPriceMax('');
+    setFilterDateFrom('');
+    setFilterDateTo('');
+  };
+  const activeFilterCount = [search, filterEstimator, filterStage, filterState, filterGC, filterContact, filterAwardedGC, filterSteelSub, filterPriceMin, filterPriceMax, filterDateFrom, filterDateTo].filter(Boolean).length;
 
   const totals = {
     review: projects.filter(p => p.stage === 'Under Review').reduce((a, p) => a + p.ssiPrice, 0),
