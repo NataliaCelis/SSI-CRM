@@ -52,10 +52,12 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.city, draft.state]);
 
+  const [saveErr, setSaveErr] = useState('');
+
   const save = async () => {
-    setSaving(true);
+    setSaving(true); setSaveErr('');
     try {
-      await onSave(project.id, {
+      const payload = {
         project_name: draft.name,
         project_type: draft.type,
         city: draft.city,
@@ -72,6 +74,7 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
         follow_up_date: draft.followUpDate || null,
         prequal: draft.prequal,
         e_number: draft.eName,
+        zip: draft.zip || null,
         _award: {
           awarded_gc_contact_name: draft.awardedGCContact,
           awarded_gc_phone: draft.awardedGCPhone,
@@ -84,8 +87,13 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
           winning_sub_price: Number(draft.winnerPrice) || null,
         },
         _awardedGC: draft.awardedGC,
-      });
+      };
+      console.log('Saving project:', project.id, payload);
+      await onSave(project.id, payload);
       setSaved(true); setTimeout(() => setSaved(false), 2500);
+    } catch(e) {
+      console.error('Save failed:', e);
+      setSaveErr(e.message || 'Save failed — check console for details');
     } finally { setSaving(false); }
   };
 
@@ -276,7 +284,13 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
       )}
 
       {/* Save / Delete */}
-      <div className="flex items-center gap-3 pt-1 pb-4 flex-wrap">
+      <div className="flex flex-col gap-3 pt-1 pb-4">
+        {saveErr && (
+          <div className="text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">
+            Error: {saveErr}
+          </div>
+        )}
+        <div className="flex items-center gap-3 flex-wrap">
         <button onClick={save} disabled={saving}
           className="px-5 py-2 bg-orange-500 hover:bg-orange-600 disabled:opacity-50 rounded-lg text-sm font-semibold text-white transition-colors shadow shadow-orange-500/20">
           {saving ? 'Saving…' : saved ? '✓ Saved!' : 'Save All Changes'}
@@ -293,6 +307,7 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
             <button onClick={()=>onDelete(project.id, currentStaff?.id)} className="px-3 py-1 text-xs bg-red-600 hover:bg-red-700 text-white rounded-lg font-semibold">Yes, Delete</button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

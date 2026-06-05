@@ -27,6 +27,7 @@ export function useProjects() {
 
     update: async (id, updates) => {
       const { _award, _awardedGC, companies: _c, notes: _n, tasks: _t, ...projectFields } = updates;
+      console.log('update action — projectFields:', projectFields, '_award:', _award);
       if (Object.keys(projectFields).length) await updateProject(id, projectFields);
       if (_award) await upsertAward(id, _award);
       await load();
