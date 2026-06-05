@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
-import { calcDistanceFromChatt } from '../lib/supabase';
+import { geocodeCityState } from '../lib/supabase';
 
 const STAGES = ['Under Review','Sent','Pending Award','Won','Lost','No Bid / Cancelled'];
 const STAGE_COLORS = {
@@ -10,40 +10,10 @@ const STAGE_COLORS = {
 const TYPES = ['GROUND UP','RENO/EXP','ADD','BUDGET','MERGER','DESIGN/BUILD','EXPANSION','RENO','ADD/RENO','SUB FAB','DEMO/RENO','REMODEL'];
 const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
 
-// City → approximate zip lookup (common project cities)
-const CITY_ZIP = {
-  'havelock,nc':'28532','beaufort,sc':'29902','key west,fl':'33040',
-  'oklahoma city,ok':'73101','auburn,al':'36830','telford,tn':'37690',
-  'gadsden,al':'35901','fort smith,ar':'72901','corpus christi,tx':'78401',
-  'montgomery,al':'36101','charlotte,nc':'28201','chattanooga,tn':'37401',
-  'birmingham,al':'35201','mobile,al':'36601','huntsville,al':'35801',
-  'knoxville,tn':'37901','nashville,tn':'37201','memphis,tn':'38101',
-  'jackson,ms':'39201','atlanta,ga':'30301','savannah,ga':'31401',
-  'columbia,sc':'29201','charleston,sc':'29401','miami,fl':'33101',
-  'tampa,fl':'33601','orlando,fl':'32801','pensacola,fl':'32501',
-  'houston,tx':'77001','dallas,tx':'75201','san antonio,tx':'78201',
-  'new orleans,la':'70112','little rock,ar':'72201','st. louis,mo':'63101',
-  'louisville,ky':'40201','lexington,ky':'40501','cincinnati,oh':'45201',
-  'columbus,oh':'43085','cleveland,oh':'44101','pittsburgh,pa':'15201',
-  'washington,dc':'20001','baltimore,md':'21201','richmond,va':'23219',
-  'norfolk,va':'23501','virginia beach,va':'23450','raleigh,nc':'27601',
-  'jacksonville,fl':'32099','fort campbell,ky':'42223','johnson city,tn':'37601',
-  'maryville,tn':'37801','cookeville,tn':'38501','cleveland,tn':'37311',
-  'manchester,tn':'37355','barksdale,la':'71110','meridian,ms':'39301',
-  'albany,ga':'31701','griffin,ga':'30223','anniston,al':'36201',
-  'tuscaloosa,al':'35401','prattville,al':'36066','bessemer,al':'35020',
-};
-
 const fmt = n => (n != null && n !== '' && Number(n) !== 0) ? '$' + Number(n).toLocaleString() : '—';
 const fmtDate = d => d ? new Date(d + 'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '—';
 const ic = 'w-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:border-orange-500 text-gray-800 dark:text-gray-200';
 const lbl = 'text-xs text-gray-500 dark:text-gray-400 mb-1 block';
-
-function getCityZip(city, state) {
-  if (!city || !state) return '';
-  const key = `${city.toLowerCase().trim()},${state.toLowerCase().trim()}`;
-  return CITY_ZIP[key] || '';
-}
 
 // ── Overview Tab ───────────────────────────────────────────
 function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
@@ -52,20 +22,33 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
   const [saved, setSaved] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
 
+  const [geocoding, setGeocoding] = useState(false);
+
   useEffect(() => { setDraft({ ...project }); }, [project.id]);
 
   const set = (field, val) => setDraft(d => ({ ...d, [field]: val }));
 
-  // Auto-calc distance + zip when city/state changes
+  // Auto-geocode when city+state are both present
   useEffect(() => {
-    if (!draft.city || !draft.state) return;
-    const dist = calcDistanceFromChatt(draft.city, draft.state);
-    const zip = getCityZip(draft.city, draft.state);
-    setDraft(d => ({
-      ...d,
-      ...(dist !== null ? { distance: `${dist} Miles`, distance_miles: dist } : {}),
-      ...(zip && !d.zip ? { zip } : {}),
-    }));
+    if (!draft.city || !draft.state || draft.city.length < 2) return;
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      setGeocoding(true);
+      try {
+        const result = await geocodeCityState(draft.city, draft.state);
+        if (cancelled || !result) return;
+        setDraft(d => ({
+          ...d,
+          distance: `${result.distanceMiles} Miles`,
+          distance_miles: result.distanceMiles,
+          // Only fill zip if user hasn't already entered one
+          zip: d.zip || result.zip || '',
+        }));
+      } finally {
+        if (!cancelled) setGeocoding(false);
+      }
+    }, 800); // debounce — wait for user to stop typing
+    return () => { cancelled = true; clearTimeout(timer); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.city, draft.state]);
 
@@ -155,17 +138,18 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
           <div>
             <label className={lbl}>
               Zip Code
-              {!draft.zip && draft.city && draft.state && (
-                <span className="ml-1 text-orange-400 font-normal">(enter manually — city not in lookup)</span>
-              )}
-              {draft.zip && <span className="ml-1 text-green-500 font-normal">(auto-filled)</span>}
+              {geocoding && <span className="ml-1 text-orange-400 font-normal animate-pulse">Looking up…</span>}
+              {!geocoding && draft.zip && <span className="ml-1 text-green-500 font-normal text-xs">✓</span>}
             </label>
-            <input value={draft.zip||''} onChange={e=>set('zip',e.target.value)} className={ic} placeholder="e.g. 37401" />
+            <input value={draft.zip||''} onChange={e=>set('zip',e.target.value)} className={ic} placeholder="Auto-filled from city/state" />
           </div>
           <div>
-            <label className={lbl}>Distance from Chattanooga, TN</label>
+            <label className={lbl}>
+              Distance from Chattanooga, TN
+              {geocoding && <span className="ml-1 text-orange-400 font-normal animate-pulse">Calculating…</span>}
+            </label>
             <input value={draft.distance||''} onChange={e=>set('distance',e.target.value)} className={ic}
-              placeholder={draft.city && draft.state ? 'City not in lookup — enter manually' : 'Enter city & state first'} />
+              placeholder={draft.city && draft.state ? (geocoding ? 'Looking up…' : 'Enter city & state, auto-calculates') : 'Enter city & state first'} />
           </div>
           <div>
             <label className={lbl}>Bid Date</label>

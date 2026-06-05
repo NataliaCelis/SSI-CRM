@@ -5,6 +5,7 @@ import {
   upsertAward, upsertProjectCompanies, addNote, softDeleteNote,
   addTask, updateTask, softDeleteTask, getNextENumber,
   fetchAppSettings, updateAppSetting, calcDistanceFromChatt,
+  geocodeCityState,
 } from '../lib/supabase';
 
 export function useProjects() {
@@ -24,31 +25,23 @@ export function useProjects() {
   const actions = {
     create: async (d) => { await createProject(d); await load(); },
 
-    // Handles both project fields AND award fields (prefixed with _award)
     update: async (id, updates) => {
       const { _award, _awardedGC, ...projectFields } = updates;
 
-      // Remap front-end keys to DB column names
+      // Only pass valid DB column names
+      const validCols = new Set([
+        'project_name','project_type','city','state','bid_date','addenda',
+        'tonnage','ssi_price','fab_cost','erect_cost','sales_tax',
+        'prevailing_wages','distance_miles','follow_up_date','prequal',
+        'stage','e_number','zip',
+      ]);
       const dbFields = {};
-      const keyMap = {
-        project_name: 'project_name', project_type: 'project_type',
-        city: 'city', state: 'state', bid_date: 'bid_date',
-        addenda: 'addenda', tonnage: 'tonnage', ssi_price: 'ssi_price',
-        fab_cost: 'fab_cost', erect_cost: 'erect_cost',
-        sales_tax: 'sales_tax', prevailing_wages: 'prevailing_wages',
-        distance_miles: 'distance_miles', follow_up_date: 'follow_up_date',
-        prequal: 'prequal', stage: 'stage', e_number: 'e_number',
-      };
       for (const [k, v] of Object.entries(projectFields)) {
-        if (keyMap[k]) dbFields[keyMap[k]] = v;
+        if (validCols.has(k)) dbFields[k] = v;
       }
 
       if (Object.keys(dbFields).length) await updateProject(id, dbFields);
-
-      if (_award) {
-        await upsertAward(id, _award);
-      }
-
+      if (_award) await upsertAward(id, _award);
       await load();
     },
 
@@ -124,18 +117,24 @@ export function useAppSettings() {
 
 function normalizeProjects(raw) {
   return raw.map(p => {
-    const awardObj = Array.isArray(p.project_awards) ? p.project_awards[0] : p.project_awards;
+    // Handle both array and single object from Supabase join
+    const awardArr = Array.isArray(p.project_awards) ? p.project_awards : (p.project_awards ? [p.project_awards] : []);
+    const awardObj = awardArr[0] || null;
+
     const companies = (p.project_companies || []).map(pc => ({
       id: pc.company?.id, name: pc.company?.name || '', pcId: pc.id,
       contacts: (pc.project_contacts || []).map(pct => ({
-        id: pct.contact?.id, name: pct.contact?.name || '', email: pct.contact?.email || '',
-        officePhone: pct.contact?.office_phone || '', ext: pct.contact?.extension || '', cell: pct.contact?.cell_phone || '',
+        id: pct.contact?.id, name: pct.contact?.name || '',
+        email: pct.contact?.email || '', officePhone: pct.contact?.office_phone || '',
+        ext: pct.contact?.extension || '', cell: pct.contact?.cell_phone || '',
       })),
     }));
+
     const notes = (p.project_notes || []).filter(n => !n.deleted_at).map(n => ({
       id: n.id, author: n.staff?.name || 'Unknown', staffId: n.staff_id,
       role: n.role_label, text: n.note_text, ts: n.created_at,
     })).sort((a, b) => new Date(a.ts) - new Date(b.ts));
+
     const tasks = (p.tasks || []).filter(t => !t.deleted_at).map(t => ({
       id: t.id, title: t.title, description: t.description,
       assignee: t.assignee?.name || '', assigneeEmail: t.assignee?.email || '',
@@ -143,14 +142,17 @@ function normalizeProjects(raw) {
       dueDate: t.due_date, status: t.status,
     }));
 
-    // Auto-calc distance
     const autoDist = calcDistanceFromChatt(p.city, p.state);
     const distMiles = p.distance_miles || autoDist;
+
+    // awardedPrice pulled directly from project_awards.awarded_price
+    const awardedPrice = awardObj?.awarded_price != null ? Number(awardObj.awarded_price) : 0;
 
     return {
       id: p.id, eName: p.e_number || '', name: p.project_name || '',
       type: p.project_type || '', estimator: p.estimator?.name?.toUpperCase() || '',
       estimatorId: p.estimator_id, city: p.city || '', state: p.state || '',
+      zip: p.zip || '',
       bidDate: p.bid_date || '', addenda: p.addenda || 0, tonnage: p.tonnage || 0,
       ssiPrice: p.ssi_price || 0, stage: p.stage,
       distance: distMiles ? `${distMiles} Miles` : '',
@@ -158,17 +160,18 @@ function normalizeProjects(raw) {
       salesTax: p.sales_tax || '', prevWages: p.prevailing_wages || '',
       fabCost: p.fab_cost || 0, erectCost: p.erect_cost || 0,
       followUpDate: p.follow_up_date || '', prequal: p.prequal || '',
+      // Award fields — all sourced from awardObj
       awardedGC: awardObj?.awarded_gc?.name || '',
       awardedGCId: awardObj?.awarded_gc_id || '',
       awardedGCContact: awardObj?.awarded_gc_contact_name || '',
       awardedGCPhone: awardObj?.awarded_gc_phone || '',
       awardedGCEmail: awardObj?.awarded_gc_email || '',
       awardedSub: awardObj?.steel_sub || '',
-      awardedPrice: awardObj?.awarded_price || 0,
+      awardedPrice,
       awardNotes: awardObj?.award_notes || '',
-      ourTonnage: awardObj?.our_tonnage || 0,
-      winnerTonnage: awardObj?.winning_sub_tonnage || 0,
-      winnerPrice: awardObj?.winning_sub_price || 0,
+      ourTonnage: awardObj?.our_tonnage != null ? Number(awardObj.our_tonnage) : 0,
+      winnerTonnage: awardObj?.winning_sub_tonnage != null ? Number(awardObj.winning_sub_tonnage) : 0,
+      winnerPrice: awardObj?.winning_sub_price != null ? Number(awardObj.winning_sub_price) : 0,
       companies, notes, tasks,
     };
   });
