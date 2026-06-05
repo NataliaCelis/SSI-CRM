@@ -141,21 +141,45 @@ export async function upsertProjectCompanies(projectId, companies) {
         if (error) throw error;
         companyId = data.id;
       }
+    } else {
+      // Update company name in case it changed
+      await supabase.from('companies').update({ name: gc.name }).eq('id', companyId);
     }
-    const { data: pcRow, error: pcErr } = await supabase.from('project_companies').insert({ project_id: projectId, company_id: companyId }).select().single();
+
+    const { data: pcRow, error: pcErr } = await supabase
+      .from('project_companies').insert({ project_id: projectId, company_id: companyId }).select().single();
     if (pcErr) throw pcErr;
+
     for (const contact of gc.contacts || []) {
       if (!contact.name?.trim()) continue;
       let contactId = contact.id;
-      if (!contactId) {
+      if (contactId) {
+        // Update existing contact with any changed fields
+        await supabase.from('contacts').update({
+          name: contact.name,
+          email: contact.email || null,
+          office_phone: contact.officePhone || null,
+          extension: contact.ext || null,
+          cell_phone: contact.cell || null,
+        }).eq('id', contactId);
+      } else {
+        // Create new contact
         const { data, error } = await supabase.from('contacts').insert({
-          company_id: companyId, name: contact.name, email: contact.email,
-          office_phone: contact.officePhone, extension: contact.ext, cell_phone: contact.cell,
+          company_id: companyId,
+          name: contact.name,
+          email: contact.email || null,
+          office_phone: contact.officePhone || null,
+          extension: contact.ext || null,
+          cell_phone: contact.cell || null,
         }).select().single();
         if (error) throw error;
         contactId = data.id;
       }
-      await supabase.from('project_contacts').insert({ project_company_id: pcRow.id, contact_id: contactId });
+      // Always re-create the project_contacts link
+      await supabase.from('project_contacts').insert({
+        project_company_id: pcRow.id,
+        contact_id: contactId,
+      });
     }
   }
 }
