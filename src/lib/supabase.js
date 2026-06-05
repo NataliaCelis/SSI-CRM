@@ -101,9 +101,18 @@ export async function createProject(projectData) {
 }
 
 export async function updateProject(id, updates) {
-  // Strip non-column keys
-  const { companies: _, notes: __, tasks: ___, ...projectUpdates } = updates;
-  const { error } = await supabase.from('projects').update(projectUpdates).eq('id', id);
+  // Strip any frontend-only keys that aren't real DB columns
+  const { companies: _, notes: __, tasks: ___, estimator: ____, stage: _____, ...rest } = updates;
+  // Only include keys that map to real project columns
+  const VALID = new Set([
+    'project_name','project_type','city','state','bid_date','addenda',
+    'tonnage','ssi_price','fab_cost','erect_cost','sales_tax',
+    'prevailing_wages','distance_miles','follow_up_date','prequal',
+    'e_number','zip','deleted_at',
+  ]);
+  const dbFields = Object.fromEntries(Object.entries(rest).filter(([k]) => VALID.has(k)));
+  if (!Object.keys(dbFields).length) return;
+  const { error } = await supabase.from('projects').update(dbFields).eq('id', id);
   if (error) throw error;
 }
 

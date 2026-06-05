@@ -26,21 +26,8 @@ export function useProjects() {
     create: async (d) => { await createProject(d); await load(); },
 
     update: async (id, updates) => {
-      const { _award, _awardedGC, ...projectFields } = updates;
-
-      // Only pass valid DB column names
-      const validCols = new Set([
-        'project_name','project_type','city','state','bid_date','addenda',
-        'tonnage','ssi_price','fab_cost','erect_cost','sales_tax',
-        'prevailing_wages','distance_miles','follow_up_date','prequal',
-        'stage','e_number','zip',
-      ]);
-      const dbFields = {};
-      for (const [k, v] of Object.entries(projectFields)) {
-        if (validCols.has(k)) dbFields[k] = v;
-      }
-
-      if (Object.keys(dbFields).length) await updateProject(id, dbFields);
+      const { _award, _awardedGC, companies: _c, notes: _n, tasks: _t, ...projectFields } = updates;
+      if (Object.keys(projectFields).length) await updateProject(id, projectFields);
       if (_award) await upsertAward(id, _award);
       await load();
     },
