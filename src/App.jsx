@@ -66,6 +66,49 @@ function KanbanView({ projects, onSelect }) {
   );
 }
 
+// ── CSV Export ─────────────────────────────────────────────
+function exportToCSV(projects) {
+  const headers = [
+    'E#','Project Name','Type','Estimator','City','State','Zip','Bid Date',
+    'Addenda','Tonnage','SSI Price','FAB Cost','Erect Cost','Sales Tax',
+    'Prevailing Wages','Distance (Miles)','Stage','Awarded GC','Steel Sub',
+    'Awarded Price','Awarded GC Contact','Awarded GC Phone','Awarded GC Email',
+    'Award Notes','Our Tonnage','Winning Sub Tonnage','Winning Sub Price',
+    'Follow-Up Date','Pre-Qual Notes','GCs','Created'
+  ];
+
+  const escape = val => {
+    if (val == null || val === '') return '';
+    const str = String(val);
+    if (str.includes(',') || str.includes('"') || str.includes('\n')) {
+      return `"${str.replace(/"/g, '""')}"`;
+    }
+    return str;
+  };
+
+  const rows = projects.map(p => [
+    p.eName, p.name, p.type, p.estimator, p.city, p.state, p.zip || '',
+    p.bidDate, p.addenda, p.tonnage, p.ssiPrice, p.fabCost, p.erectCost,
+    p.salesTax, p.prevWages, p.distance_miles || '',
+    p.stage, p.awardedGC, p.awardedSub,
+    p.stage === 'Lost' ? p.awardedPrice : '',
+    p.awardedGCContact, p.awardedGCPhone, p.awardedGCEmail,
+    p.awardNotes, p.ourTonnage, p.winnerTonnage, p.winnerPrice,
+    p.followUpDate, p.prequal,
+    p.companies.map(c => c.name).join(' | '),
+    p.bidDate,
+  ].map(escape).join(','));
+
+  const csv = [headers.join(','), ...rows].join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `SSI_Bids_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 // ── Table ──────────────────────────────────────────────────
 function TableView({ projects, onSelect, sortBy, sortDir, onSort }) {
   const cols = [
@@ -76,6 +119,13 @@ function TableView({ projects, onSelect, sortBy, sortDir, onSort }) {
     { key: 'awardedPrice', label: 'Awarded Price' }, { key: 'stage', label: 'Stage' },
   ];
   return (
+    <div>
+      <div className="flex justify-end mb-3">
+        <button onClick={() => exportToCSV(projects)}
+          className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold rounded-lg transition-colors shadow-sm">
+          ⬇ Export to Excel / CSV
+        </button>
+      </div>
     <div className="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden shadow-sm overflow-x-auto">
       <table className="w-full text-sm min-w-max">
         <thead>
@@ -109,6 +159,7 @@ function TableView({ projects, onSelect, sortBy, sortDir, onSort }) {
           {!projects.length && <tr><td colSpan={10} className="px-4 py-10 text-center text-gray-400 text-sm">No projects found.</td></tr>}
         </tbody>
       </table>
+    </div>
     </div>
   );
 }
