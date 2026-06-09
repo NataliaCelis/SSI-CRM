@@ -8,18 +8,19 @@ import AddProjectModal from './components/AddProjectModal';
 import StaffDirectory from './components/StaffDirectory';
 import EmailTemplateModal from './components/EmailTemplateModal';
 
-const STAGES = ['Under Review','Sent','Pending Award','Won','Lost','No Bid / Cancelled'];
+const STAGES = ['Projects in Review','Sent','Pending Award','Won','WIP','Lost','No Bid / Cancelled'];
 const STAGE_COLORS = {
-  'Under Review':'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300',
+  'Projects in Review':'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300',
   'Sent':'bg-green-100 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300',
   'Pending Award':'bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-300',
   'Won':'bg-yellow-100 border-yellow-400 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-300',
+  'WIP':'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300',
   'Lost':'bg-red-100 border-red-300 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-300',
   'No Bid / Cancelled':'bg-gray-100 border-gray-300 text-gray-600 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400',
 };
 const STAGE_PILL = {
-  'Under Review':'bg-orange-500','Sent':'bg-green-500','Pending Award':'bg-purple-500',
-  'Won':'bg-yellow-500','Lost':'bg-red-500','No Bid / Cancelled':'bg-gray-500',
+  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','Pending Award':'bg-purple-500',
+  'Won':'bg-yellow-500','WIP':'bg-blue-500','Lost':'bg-red-500','No Bid / Cancelled':'bg-gray-500',
 };
 
 const fmt = n => n ? '$' + Number(n).toLocaleString() : '—';
@@ -235,9 +236,10 @@ export default function App() {
   const activeFilterCount = [search, filterEstimator, filterStage, filterState, filterGC, filterContact, filterAwardedGC, filterSteelSub, filterPriceMin, filterPriceMax, filterDateFrom, filterDateTo].filter(Boolean).length;
 
   const totals = {
-    review: projects.filter(p => p.stage === 'Under Review').reduce((a, p) => a + p.ssiPrice, 0),
     sent: projects.filter(p => p.stage === 'Sent' || p.stage === 'Pending Award').reduce((a, p) => a + p.ssiPrice, 0),
     won: projects.filter(p => p.stage === 'Won').reduce((a, p) => a + p.ssiPrice, 0),
+    wip: projects.filter(p => p.stage === 'WIP').reduce((a, p) => a + p.ssiPrice, 0),
+    lost: projects.filter(p => p.stage === 'Lost').reduce((a, p) => a + (p.awardedPrice || p.ssiPrice || 0), 0),
   };
 
   const selectedProject = projects.find(p => p.id === selected);
@@ -295,9 +297,10 @@ export default function App() {
       {/* Summary Bar */}
       <div className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 px-4 sm:px-6 py-2.5 flex gap-4 sm:gap-6 text-sm overflow-x-auto">
         {[
-          { label: 'Under Review', value: totals.review, color: 'bg-orange-400', textColor: 'text-orange-500 dark:text-orange-400' },
           { label: 'Sent/Pending', value: totals.sent, color: 'bg-green-400', textColor: 'text-green-500 dark:text-green-400' },
+          { label: 'WIP', value: totals.wip, color: 'bg-blue-400', textColor: 'text-blue-500 dark:text-blue-400' },
           { label: 'Won', value: totals.won, color: 'bg-yellow-400', textColor: 'text-yellow-600 dark:text-yellow-400' },
+          { label: 'Lost', value: totals.lost, color: 'bg-red-400', textColor: 'text-red-500 dark:text-red-400' },
         ].map(({ label, value, color, textColor }) => (
           <div key={label} className="flex items-center gap-2 flex-shrink-0">
             <span className={`w-2 h-2 rounded-full ${color} inline-block`} />

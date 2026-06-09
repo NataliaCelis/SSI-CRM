@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { geocodeCityState } from '../lib/supabase';
 
-const STAGES = ['Under Review','Sent','Pending Award','Won','Lost','No Bid / Cancelled'];
+const STAGES = ['Projects in Review','Sent','Pending Award','Won','WIP','Lost','No Bid / Cancelled'];
 const STAGE_COLORS = {
-  'Under Review':'bg-orange-500','Sent':'bg-green-500','Pending Award':'bg-purple-500',
-  'Won':'bg-yellow-500','Lost':'bg-red-500','No Bid / Cancelled':'bg-gray-500',
+  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','Pending Award':'bg-purple-500',
+  'Won':'bg-yellow-500','WIP':'bg-blue-500','Lost':'bg-red-500','No Bid / Cancelled':'bg-gray-500',
 };
 const TYPES = ['GROUND UP','RENO/EXP','ADD','BUDGET','MERGER','DESIGN/BUILD','EXPANSION','RENO','ADD/RENO','SUB FAB','DEMO/RENO','REMODEL'];
 const US_STATES = ['AL','AK','AZ','AR','CA','CO','CT','DE','FL','GA','HI','ID','IL','IN','IA','KS','KY','LA','ME','MD','MA','MI','MN','MS','MO','MT','NE','NV','NH','NJ','NM','NY','NC','ND','OH','OK','OR','PA','RI','SC','SD','TN','TX','UT','VT','VA','WA','WV','WI','WY'];
