@@ -8,7 +8,7 @@ import AddProjectModal from './components/AddProjectModal';
 import StaffDirectory from './components/StaffDirectory';
 import EmailTemplateModal from './components/EmailTemplateModal';
 
-const STAGES = ['Projects in Review','Sent','Pending Award','Won','WIP','Lost','No Bid / Cancelled'];
+const STAGES = ['Projects in Review','WIP','Sent','Pending Award','Won','Lost','No Bid / Cancelled'];
 const STAGE_COLORS = {
   'Projects in Review':'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300',
   'Sent':'bg-green-100 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300',
