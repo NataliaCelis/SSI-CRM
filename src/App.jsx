@@ -402,6 +402,7 @@ export default function App() {
         <ProjectDetail
           project={selectedProject}
           staff={staff}
+          allContacts={companies.flatMap(c => c.contacts || [])}
           onClose={() => setSelected(null)}
           onUpdate={actions.update}
           onUpdateStage={actions.updateStage}

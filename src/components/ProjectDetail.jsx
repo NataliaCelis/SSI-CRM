@@ -16,7 +16,7 @@ const ic = 'w-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:bord
 const lbl = 'text-xs text-gray-500 dark:text-gray-400 mb-1 block';
 
 // ── Overview Tab ───────────────────────────────────────────
-function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
+function OverviewTab({ project, onSave, onDelete, currentStaff, isManager, staff }) {
   const [draft, setDraft] = useState({ ...project });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -60,6 +60,7 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
       const payload = {
         project_name: draft.name,
         project_type: draft.type,
+        estimator_id: draft.estimatorId || null,
         city: draft.city,
         state: draft.state,
         bid_date: draft.bidDate || null,
@@ -121,6 +122,19 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
           <div className="col-span-2">
             <label className={lbl}>Project Name</label>
             <input value={draft.name||''} onChange={e=>set('name',e.target.value)} className={ic} placeholder="Project name" />
+          </div>
+          <div>
+            <label className={lbl}>Estimator</label>
+            <select value={draft.estimatorId||''} onChange={e=>set('estimatorId',e.target.value)} className={ic}>
+              <option value="">— Select Estimator —</option>
+              {(staff||[]).filter(s=>s.roles?.includes('Estimator')).map(s=>(
+                <option key={s.id} value={s.id}>{s.name}</option>
+              ))}
+            </select>
+            {/* Show current estimator name if id is set but not in staff list */}
+            {draft.estimatorId && !staff?.find(s=>s.id===draft.estimatorId) && (
+              <div className="text-xs text-gray-400 mt-0.5">Current: {project.estimator}</div>
+            )}
           </div>
           <div>
             <label className={lbl}>Type</label>
@@ -314,7 +328,7 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager }) {
 }
 
 // ── Companies Tab ──────────────────────────────────────────
-function CompaniesTab({ project, onSaveCompanies }) {
+function CompaniesTab({ project, onSaveCompanies, allContacts = [] }) {
   const [editing, setEditing] = useState(false);
   const [companies, setCompanies] = useState([]);
   const [saving, setSaving] = useState(false);
@@ -327,6 +341,24 @@ function CompaniesTab({ project, onSaveCompanies }) {
   const updCt = (gi,ci,f,v)=>setCompanies(cs=>cs.map((c,i)=>i===gi?{...c,contacts:c.contacts.map((ct,j)=>j===ci?{...ct,[f]:v}:ct)}:c));
   const rmGC = gi=>setCompanies(cs=>cs.filter((_,i)=>i!==gi));
   const rmCt = (gi,ci)=>setCompanies(cs=>cs.map((c,i)=>i===gi?{...c,contacts:c.contacts.filter((_,j)=>j!==ci)}:c));
+
+  // Autofill contact details when a known name is selected
+  const fillContact = (gi, ci, name) => {
+    const found = allContacts.find(c => c.name?.toLowerCase() === name.toLowerCase());
+    if (found) {
+      setCompanies(cs => cs.map((c, i) => i === gi ? {
+        ...c, contacts: c.contacts.map((ct, j) => j === ci ? {
+          ...ct,
+          id: found.id,
+          name: found.name,
+          email: found.email || ct.email,
+          officePhone: found.office_phone || found.officePhone || ct.officePhone,
+          ext: found.extension || found.ext || ct.ext,
+          cell: found.cell_phone || found.cell || ct.cell,
+        } : ct)
+      } : c));
+    }
+  };
 
   const save = async()=>{
     setSaving(true);
@@ -372,7 +404,18 @@ function CompaniesTab({ project, onSaveCompanies }) {
           {gc.contacts?.map((c,ci)=>(
             <div key={ci} className="grid grid-cols-2 gap-2 border-t border-gray-200 dark:border-gray-700/50 pt-3 mt-3 relative">
               {gc.contacts.length>1&&<button onClick={()=>rmCt(gi,ci)} className="absolute right-0 top-3 text-red-400 hover:text-red-300 text-sm">×</button>}
-              <div className="col-span-2"><input value={c.name} onChange={e=>updCt(gi,ci,'name',e.target.value)} className={ic} placeholder="Contact Name" /></div>
+              <div className="col-span-2">
+                <input
+                  value={c.name}
+                  onChange={e => { updCt(gi,ci,'name',e.target.value); fillContact(gi,ci,e.target.value); }}
+                  className={ic}
+                  placeholder="Contact Name (type to autofill)"
+                  list={`cl-${gi}-${ci}`}
+                />
+                <datalist id={`cl-${gi}-${ci}`}>
+                  {allContacts.map((ct,k)=><option key={k} value={ct.name} />)}
+                </datalist>
+              </div>
               <input value={c.email} onChange={e=>updCt(gi,ci,'email',e.target.value)} className={ic} placeholder="Email" />
               <div className="flex gap-1">
                 <input value={c.officePhone} onChange={e=>updCt(gi,ci,'officePhone',e.target.value)} className={ic+' flex-1'} placeholder="Office Phone" />
@@ -554,7 +597,7 @@ function TasksTab({ project, staff, currentStaff, isManager, onAddTask, onUpdate
 }
 
 // ── Main ProjectDetail ─────────────────────────────────────
-export default function ProjectDetail({ project, staff, onClose, onUpdate, onUpdateStage, onDelete, onAddNote, onDeleteNote, onAddTask, onUpdateTask, onDeleteTask, onSaveCompanies, emailTemplate }) {
+export default function ProjectDetail({ project, staff, allContacts = [], onClose, onUpdate, onUpdateStage, onDelete, onAddNote, onDeleteNote, onAddTask, onUpdateTask, onDeleteTask, onSaveCompanies, emailTemplate }) {
   const { staff: currentStaff, isManager } = useAuth();
   const [tab, setTab] = useState('overview');
   if(!project) return null;
@@ -604,8 +647,8 @@ export default function ProjectDetail({ project, staff, onClose, onUpdate, onUpd
           ))}
         </div>
         <div className="flex-1 overflow-y-auto px-6">
-          {tab==='overview'&&<OverviewTab project={project} onSave={onUpdate} onDelete={onDelete} currentStaff={currentStaff} isManager={isManager} />}
-          {tab==='companies'&&<CompaniesTab project={project} onSaveCompanies={onSaveCompanies} />}
+          {tab==='overview'&&<OverviewTab project={project} staff={staff} onSave={onUpdate} onDelete={onDelete} currentStaff={currentStaff} isManager={isManager} />}
+          {tab==='companies'&&<CompaniesTab project={project} onSaveCompanies={onSaveCompanies} allContacts={allContacts} />}
           {tab==='activity'&&<ActivityTab project={project} currentStaff={currentStaff} isManager={isManager} onAddNote={onAddNote} onDeleteNote={onDeleteNote} />}
           {tab==='tasks'&&<TasksTab project={project} staff={staff} currentStaff={currentStaff} isManager={isManager} onAddTask={onAddTask} onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} emailTemplate={emailTemplate} />}
         </div>
