@@ -56,8 +56,6 @@ function OverviewTab({ project, staff = [], onSave, onDelete, currentStaff, isMa
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft.city, draft.state]);
 
-  const [saveErr, setSaveErr] = useState('');
-
   const save = async () => {
     setSaving(true); setSaveErr('');
     try {
