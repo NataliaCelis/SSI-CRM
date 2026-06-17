@@ -1,6 +1,6 @@
 # SSI Steel Bid Pipeline CRM
 
-A full-stack bid management CRM for Southern Spear Ironworks, built with **React + Vite + Tailwind** on the frontend and **Supabase** (Postgres + Auth + RLS) on the backend.
+A full-stack bid management CRM for Southern Spear Ironworks, built with React + Vite + Tailwind on the frontend and Supabase (Postgres + Auth + RLS) on the backend.
 
 ---
 
@@ -8,144 +8,235 @@ A full-stack bid management CRM for Southern Spear Ironworks, built with **React
 
 ```
 ssi-crm/
-├── supabase/
-│   └── schema.sql              ← Run this first in Supabase SQL Editor
-├── src/
-│   ├── lib/
-│   │   ├── supabase.js         ← Supabase client + all data helpers
-│   │   └── AuthContext.jsx     ← Auth state provider + role helpers
-│   ├── hooks/
-│   │   └── useData.js          ← useProjects, useStaff, useCompanies hooks
-│   ├── pages/
-│   │   └── LoginPage.jsx       ← Sign-in screen
-│   ├── components/
-│   │   ├── ProjectDetail.jsx   ← Slide-in panel (4 tabs)
-│   │   ├── AddProjectModal.jsx ← New project form with GC builder
-│   │   └── StaffDirectory.jsx  ← Team management modal
-│   ├── App.jsx                 ← Main app (Pipeline + Table views)
-│   ├── main.jsx                ← Entry point
-│   └── index.css               ← Tailwind base
 ├── index.html
 ├── package.json
 ├── vite.config.js
 ├── tailwind.config.js
 ├── postcss.config.js
-├── .env.example                ← Copy to .env and fill in
-└── .gitignore
+├── .env.example
+├── src/
+│   ├── main.jsx
+│   ├── App.jsx
+│   ├── index.css
+│   ├── lib/
+│   │   ├── supabase.js
+│   │   └── AuthContext.jsx
+│   ├── hooks/
+│   │   └── useData.js
+│   ├── pages/
+│   │   ├── LoginPage.jsx
+│   │   └── AcceptInvitePage.jsx
+│   └── components/
+│       ├── ProjectDetail.jsx
+│       ├── AddProjectModal.jsx
+│       ├── StaffDirectory.jsx
+│       └── EmailTemplateModal.jsx
+└── supabase/
+    └── schema.sql
 ```
 
 ---
 
-## Setup — Step by Step
+## Setup
 
 ### 1. Create a Supabase Project
-1. Go to [supabase.com](https://supabase.com) → New Project
-2. Choose a name, password, and region (us-east-1 recommended for TN)
-3. Wait for it to spin up (~2 min)
+
+Go to [supabase.com](https://supabase.com) → New Project. Wait for it to spin up (~2 min).
 
 ### 2. Run the Schema
-1. In Supabase Dashboard → **SQL Editor**
-2. Click **New Query**
-3. Paste the entire contents of `supabase/schema.sql`
-4. Click **Run**
 
-This creates all tables, RLS policies, triggers, and seeds staff + roles.
+Supabase Dashboard → **SQL Editor** → New Query → paste contents of `supabase/schema.sql` → **Run**
 
-### 3. Create Auth Users
-For each staff member who needs to log in:
+### 3. Get Your API Keys
 
-1. Supabase Dashboard → **Authentication** → **Users** → **Invite User**
-2. Enter their email (must match the email in the `staff` table)
-3. They'll get an email to set their password
-
-Then link their auth account to their staff record:
-```sql
--- Run in SQL Editor for each user after they accept the invite:
-UPDATE staff
-SET auth_user_id = (SELECT id FROM auth.users WHERE email = 'will@southernspearironworks.com')
-WHERE email = 'will@southernspearironworks.com';
-```
-
-### 4. Get Your API Keys
 Supabase Dashboard → **Settings** → **API**
-- Copy **Project URL**
-- Copy **anon/public key** (NOT the service role key)
 
-### 5. Configure Environment
+Copy:
+- **Project URL** → `VITE_SUPABASE_URL`
+- **anon / public key** → `VITE_SUPABASE_ANON_KEY`
+
+### 4. Configure Environment
+
 ```bash
 cp .env.example .env
 ```
+
 Edit `.env`:
+
 ```
-VITE_SUPABASE_URL=https://xxxxxxxxxxxx.supabase.co
+VITE_SUPABASE_URL=https://your-project-id.supabase.co
 VITE_SUPABASE_ANON_KEY=eyJhbGci...
 ```
 
-### 6. Install & Run
+### 5. Install & Run Locally
+
 ```bash
 npm install
 npm run dev
 ```
 
-App runs at **http://localhost:5173**
+App runs at `http://localhost:5173`
 
-### 7. Deploy (optional)
-```bash
-npm run build
+### 6. Deploy to Vercel
+
+1. Push this repo to GitHub
+2. Go to [vercel.com](https://vercel.com) → New Project → import repo
+3. Framework preset: **Vite**
+4. Add environment variables: `VITE_SUPABASE_URL` and `VITE_SUPABASE_ANON_KEY`
+5. Deploy
+
+### 7. Configure Supabase Auth URLs
+
+Supabase Dashboard → **Authentication** → **URL Configuration**
+
 ```
-Upload the `dist/` folder to Netlify, Vercel, or any static host. Add your environment variables in the host's dashboard.
+Site URL:       https://your-app.vercel.app
+Redirect URLs:  https://your-app.vercel.app/*
+                https://your-app.vercel.app/auth/callback
+```
 
 ---
 
-## Authentication & Roles
+## Inviting Users
 
-| Role | Can Do |
-|------|--------|
-| **Manager** | Change bid stage, assign tasks to anyone, manage staff, delete projects |
-| **Sales Manager** | Change bid stage, assign tasks to Estimators & Sales |
-| **Estimator** | Add notes (Estimator role), update task status |
-| **Sales** | Add notes (Sales role), update task status |
+All access is invite-only — no public sign-up.
 
-- Roles are stored in `staff_roles` table
-- RLS policies enforce read/write at the database level
-- The `is_manager()` SQL function powers stage-change + task-assign gating
+**Step 1 — Invite in Supabase:**
 
----
+Supabase Dashboard → **Authentication** → **Users** → **Invite User** → enter email
 
-## Key Design Decisions
+**Step 2 — Link to staff record** (run after they accept the invite):
 
-### Why not store GC/contact data directly on projects?
-The normalized schema (`companies`, `contacts`, `project_companies`, `project_contacts`) means:
-- A contact like "Dan Weaver at BL Harbert" exists once globally
-- Autocomplete works across all projects
-- You can filter "show me all projects BL Harbert is bidding on" easily
+```sql
+UPDATE staff
+SET auth_user_id = (
+  SELECT id FROM auth.users WHERE email = 'their@email.com' LIMIT 1
+)
+WHERE email = 'their@email.com';
+```
 
-### RLS vs application-level auth
-Supabase RLS means even if someone bypasses the UI, they can't read/write data without a valid JWT matching an authenticated user. This is real security, not just UI gating.
-
-### Why `normalizeProjects()` in `useData.js`?
-The Supabase join response has a nested shape (`project_companies[].project_contacts[].contact`). The normalizer flattens this to the same shape your existing React components expect, so the UI code stays clean.
+**Step 3** — They sign out and back in. Done.
 
 ---
 
-## Migrating Your Existing Data
+## Adding a Manager
 
-After running schema.sql, you can seed your existing projects by either:
+```sql
+-- Add staff member
+INSERT INTO staff (name, email)
+VALUES ('Name', 'their@email.com')
+ON CONFLICT (email) DO NOTHING;
 
-**Option A — CSV Import**: Export your Excel data to CSV, use Supabase's Table Editor → Import CSV for each table.
+-- Assign Manager role
+INSERT INTO staff_roles (staff_id, role)
+SELECT id, 'Manager' FROM staff WHERE email = 'their@email.com'
+ON CONFLICT (staff_id, role) DO NOTHING;
 
-**Option B — SQL Insert**: Paste `INSERT` statements for each project into SQL Editor. The `supabase.js` `createProject()` function handles the relational inserts if you call it programmatically.
-
-**Option C — Run the app**: Use "+ New Project" to enter projects one by one. Takes ~5 min per project but gives you clean data entry with contact autocomplete.
+-- Link auth account (after they accept invite)
+UPDATE staff
+SET auth_user_id = (
+  SELECT id FROM auth.users WHERE email = 'their@email.com' LIMIT 1
+)
+WHERE email = 'their@email.com';
+```
 
 ---
 
-## Troubleshooting
+## Roles
 
-**"Missing Supabase environment variables"** → Make sure `.env` exists and has both variables. Restart the dev server after editing `.env`.
+| Role | Permissions |
+|------|------------|
+| **Manager** | Full access — edit/delete anything, change bid stage, assign tasks, manage staff |
+| **Sales Manager** | Change bid stage, assign tasks, add notes |
+| **Estimator** | Add Estimator notes, update own task status |
+| **Sales** | Add Sales notes, update own task status |
 
-**"new row violates row-level security"** → The user's `auth_user_id` in the `staff` table doesn't match their Supabase Auth UUID. Run the `UPDATE staff SET auth_user_id = ...` query in Step 3.
+---
 
-**Staff member can't change bid stage** → Check their roles in `staff_roles`. Must be `Manager` or `Sales Manager`.
+## Stages
 
-**Contact autocomplete not working** → Contacts only appear if they've been added to at least one project previously, or if you insert them directly into the `contacts` table.
+Pipeline order: **Projects in Review → WIP → Sent → Pending Award → Won → Lost → No Bid / Cancelled**
+
+---
+
+## Exporting Data
+
+Switch to **Table** view → click **⬇ Export to Excel / CSV**
+
+Exports all currently visible/filtered projects as a `.csv` file that opens in Excel.
+
+---
+
+## Verify Staff Links
+
+Run this anytime to check who is linked:
+
+```sql
+SELECT s.name, s.email,
+  CASE WHEN s.auth_user_id IS NOT NULL THEN 'LINKED' ELSE 'NOT LINKED' END AS status,
+  array_agg(sr.role ORDER BY sr.role) AS roles
+FROM staff s
+LEFT JOIN staff_roles sr ON sr.staff_id = s.id
+GROUP BY s.id, s.name, s.email, s.auth_user_id
+ORDER BY s.name;
+```
+
+---
+
+## Fix Common Errors
+
+**`invalid input syntax for type boolean`**
+```sql
+ALTER TABLE projects ALTER COLUMN sales_tax TYPE text USING
+  CASE WHEN sales_tax = true THEN 'YES' WHEN sales_tax = false THEN 'NO' ELSE NULL END;
+ALTER TABLE projects ALTER COLUMN prevailing_wages TYPE text USING
+  CASE WHEN prevailing_wages = true THEN 'YES' WHEN prevailing_wages = false THEN 'NO' ELSE NULL END;
+```
+
+**`column does not exist` on project_awards**
+```sql
+ALTER TABLE project_awards ADD COLUMN IF NOT EXISTS awarded_gc_contact_name text;
+ALTER TABLE project_awards ADD COLUMN IF NOT EXISTS awarded_gc_phone text;
+ALTER TABLE project_awards ADD COLUMN IF NOT EXISTS awarded_gc_email text;
+ALTER TABLE project_awards ADD COLUMN IF NOT EXISTS steel_sub text;
+ALTER TABLE project_awards ADD COLUMN IF NOT EXISTS award_notes text;
+ALTER TABLE project_awards ADD COLUMN IF NOT EXISTS our_tonnage numeric;
+ALTER TABLE project_awards ADD COLUMN IF NOT EXISTS winning_sub_tonnage numeric;
+ALTER TABLE project_awards ADD COLUMN IF NOT EXISTS winning_sub_price numeric;
+```
+
+**`record "new" has no field "updated_at"`**
+```sql
+DROP TRIGGER IF EXISTS trg_projects_updated_at ON projects;
+DROP TRIGGER IF EXISTS trg_awards_updated_at ON project_awards;
+DROP TRIGGER IF EXISTS trg_tasks_updated_at ON tasks;
+DROP TRIGGER IF EXISTS trg_staff_updated_at ON staff;
+DROP FUNCTION IF EXISTS update_updated_at() CASCADE;
+```
+Then:
+```sql
+CREATE OR REPLACE FUNCTION update_updated_at()
+RETURNS trigger AS $$
+BEGIN
+  NEW.updated_at = now();
+  RETURN NEW;
+END;
+$$ language plpgsql;
+
+CREATE TRIGGER trg_projects_updated_at BEFORE UPDATE ON projects FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_awards_updated_at BEFORE UPDATE ON project_awards FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_tasks_updated_at BEFORE UPDATE ON tasks FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+CREATE TRIGGER trg_staff_updated_at BEFORE UPDATE ON staff FOR EACH ROW EXECUTE FUNCTION update_updated_at();
+```
+
+**`new row violates row-level security`**
+
+Your `auth_user_id` isn't linked. Run the link query above for your email.
+
+---
+
+## Where Is My Data?
+
+Your data lives in Supabase — completely separate from Vercel. Redeploying never touches the database. View it anytime at **Supabase Dashboard → Table Editor**.
+
+Free tier pauses after 7 days of inactivity. Upgrade to Pro ($25/mo) to prevent this.

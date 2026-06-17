@@ -7,19 +7,20 @@ import ProjectDetail from './components/ProjectDetail';
 import AddProjectModal from './components/AddProjectModal';
 import StaffDirectory from './components/StaffDirectory';
 import EmailTemplateModal from './components/EmailTemplateModal';
+import BidCalendar from './components/BidCalendar';
 
-const STAGES = ['Projects in Review','WIP','Sent','Pending Award','Won','Lost','No Bid / Cancelled'];
+const STAGES = ['Projects in Review','WIP','Sent','Awarded','Won','Lost','No Bid / Cancelled'];
 const STAGE_COLORS = {
   'Projects in Review':'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300',
   'Sent':'bg-green-100 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300',
-  'Pending Award':'bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-300',
+  'Awarded':'bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-300',
   'Won':'bg-yellow-100 border-yellow-400 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-300',
   'WIP':'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300',
   'Lost':'bg-red-100 border-red-300 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-300',
   'No Bid / Cancelled':'bg-gray-100 border-gray-300 text-gray-600 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400',
 };
 const STAGE_PILL = {
-  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','Pending Award':'bg-purple-500',
+  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','Awarded':'bg-purple-500',
   'Won':'bg-yellow-500','WIP':'bg-blue-500','Lost':'bg-red-500','No Bid / Cancelled':'bg-gray-500',
 };
 
@@ -333,12 +334,9 @@ export default function App() {
           Filters {activeFilterCount > 0 && <span className="ml-1 bg-orange-600 text-white text-xs rounded-full px-1.5">{activeFilterCount}</span>}
         </button>
         <div className="flex gap-1 ml-auto">
-          {['kanban', 'table'].map(v => (
-            <button key={v} onClick={() => setView(v)}
-              className={`${btnCls} capitalize ${view === v ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>
-              {v === 'kanban' ? 'Pipeline' : 'Table'}
-            </button>
-          ))}
+          <button onClick={() => setView('kanban')} className={`${btnCls} ${view === 'kanban' ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>Pipeline</button>
+          <button onClick={() => setView('table')} className={`${btnCls} ${view === 'table' ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>Table</button>
+          <button onClick={() => setView('calendar')} className={`${btnCls} ${view === 'calendar' ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>📅 Calendar</button>
         </div>
         <button onClick={() => setShowAdd(true)} className={`${btnCls} bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/20 font-semibold`}>
           + New Project
@@ -394,6 +392,8 @@ export default function App() {
           </div>
         ) : view === 'kanban'
           ? <KanbanView projects={filtered} onSelect={setSelected} />
+          : view === 'calendar'
+          ? <BidCalendar projects={filtered} onSelectProject={setSelected} />
           : <TableView projects={sorted} onSelect={setSelected} sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
         }
       </div>

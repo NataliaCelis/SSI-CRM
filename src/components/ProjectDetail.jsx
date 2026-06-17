@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { geocodeCityState } from '../lib/supabase';
 
-const STAGES = ['Projects in Review','WIP','Sent','Pending Award','Won','Lost','No Bid / Cancelled'];
+const STAGES = ['Projects in Review','WIP','Sent','Awarded','Won','Lost','No Bid / Cancelled'];
 const STAGE_COLORS = {
-  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','Pending Award':'bg-purple-500',
+  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','Awarded':'bg-purple-500',
   'Won':'bg-yellow-500','WIP':'bg-blue-500','Lost':'bg-red-500','No Bid / Cancelled':'bg-gray-500',
 };
 const TYPES = ['GROUND UP','RENO/EXP','ADD','BUDGET','MERGER','DESIGN/BUILD','EXPANSION','RENO','ADD/RENO','SUB FAB','DEMO/RENO','REMODEL'];
@@ -16,13 +16,17 @@ const ic = 'w-full bg-gray-100 dark:bg-gray-700 border border-gray-300 dark:bord
 const lbl = 'text-xs text-gray-500 dark:text-gray-400 mb-1 block';
 
 // ── Overview Tab ───────────────────────────────────────────
-function OverviewTab({ project, onSave, onDelete, currentStaff, isManager, staff }) {
+function OverviewTab({ project, staff = [], onSave, onDelete, currentStaff, isManager }) {
   const [draft, setDraft] = useState({ ...project });
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [confirmDel, setConfirmDel] = useState(false);
-
+  const [saveErr, setSaveErr] = useState('');
   const [geocoding, setGeocoding] = useState(false);
+
+  // Track original values to detect changes that need emails
+  const [origAddenda] = useState(project.addenda);
+  const [origBidDate] = useState(project.bidDate);
 
   useEffect(() => { setDraft({ ...project }); }, [project.id]);
 
@@ -76,6 +80,7 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager, staff
         prequal: draft.prequal,
         e_number: draft.eName,
         zip: draft.zip || null,
+        square_feet: Number(draft.squareFeet) || null,
         _award: {
           awarded_gc_contact_name: draft.awardedGCContact,
           awarded_gc_phone: draft.awardedGCPhone,
@@ -174,16 +179,60 @@ function OverviewTab({ project, onSave, onDelete, currentStaff, isManager, staff
               placeholder={draft.city && draft.state ? (geocoding ? 'Looking up…' : 'Enter city & state, auto-calculates') : 'Enter city & state first'} />
           </div>
           <div>
-            <label className={lbl}>Bid Date</label>
+            <label className={lbl}>
+              Bid Date
+              {draft.bidDate !== origBidDate && origBidDate && (
+                <span className="ml-2 text-orange-400 font-normal">
+                  (was: {fmtDate(origBidDate)})
+                </span>
+              )}
+            </label>
             <input type="date" value={draft.bidDate||''} onChange={e=>set('bidDate',e.target.value)} className={ic} />
+            {draft.bidDate !== origBidDate && origBidDate && (
+              <button
+                onClick={() => {
+                  const estimator = staff.find(s => s.id === draft.estimatorId);
+                  if (!estimator?.email) { alert('No estimator email found.'); return; }
+                  const subject = encodeURIComponent(`Bid Date Changed — ${project.name} (${project.eName})`);
+                  const body = encodeURIComponent(`Hi ${estimator.name},\n\nThe bid date for project ${project.name} (${project.eName}) has been updated.\n\nOld Bid Date: ${fmtDate(origBidDate)}\nNew Bid Date: ${fmtDate(draft.bidDate)}\n\nPlease update your schedule accordingly.\n\n— ${currentStaff?.name || 'SSI Team'}`);
+                  window.open(`mailto:${estimator.email}?subject=${subject}&body=${body}`);
+                }}
+                className="mt-1 text-xs text-orange-500 hover:text-orange-400 transition-colors"
+              >
+                📧 Draft email to estimator about date change
+              </button>
+            )}
           </div>
           <div>
-            <label className={lbl}>Addenda</label>
+            <label className={lbl}>
+              Addenda
+              {Number(draft.addenda) !== Number(origAddenda) && (
+                <span className="ml-2 text-orange-400 font-normal">(was: {origAddenda})</span>
+              )}
+            </label>
             <input type="number" value={draft.addenda||''} onChange={e=>set('addenda',e.target.value)} className={ic} />
+            {Number(draft.addenda) !== Number(origAddenda) && (
+              <button
+                onClick={() => {
+                  const estimator = staff.find(s => s.id === draft.estimatorId);
+                  if (!estimator?.email) { alert('No estimator email found.'); return; }
+                  const subject = encodeURIComponent(`Addenda Updated — ${project.name} (${project.eName})`);
+                  const body = encodeURIComponent(`Hi ${estimator.name},\n\nAddenda for project ${project.name} (${project.eName}) has been updated.\n\nPrevious Addenda Count: ${origAddenda}\nNew Addenda Count: ${draft.addenda}\n\nPlease review the latest addenda documents.\n\n— ${currentStaff?.name || 'SSI Team'}`);
+                  window.open(`mailto:${estimator.email}?subject=${subject}&body=${body}`);
+                }}
+                className="mt-1 text-xs text-orange-500 hover:text-orange-400 transition-colors"
+              >
+                📧 Draft email to estimator about addenda change
+              </button>
+            )}
           </div>
           <div>
             <label className={lbl}>Tonnage</label>
             <input type="number" value={draft.tonnage||''} onChange={e=>set('tonnage',e.target.value)} className={ic} />
+          </div>
+          <div>
+            <label className={lbl}>Square Feet</label>
+            <input type="number" value={draft.squareFeet||''} onChange={e=>set('squareFeet',e.target.value)} className={ic} placeholder="0" />
           </div>
           <div>
             <label className={lbl}>SSI Price ($)</label>

@@ -154,7 +154,7 @@ export async function upsertProjectCompanies(projectId, companies) {
       if (!contact.name?.trim()) continue;
       let contactId = contact.id;
       if (contactId) {
-        // Update existing contact with any changed fields
+        // Update existing contact — syncs across ALL projects using this contact
         await supabase.from('contacts').update({
           name: contact.name,
           email: contact.email || null,
@@ -238,11 +238,27 @@ export async function fetchAllCompanies() {
 
 // ── E# ────────────────────────────────────────────────────
 export async function getNextENumber() {
-  const yy = String(new Date().getFullYear()).slice(-2);
+  const now = new Date();
+  const yy = String(now.getFullYear()).slice(-2);
+  const year = now.getFullYear();
   const prefix = `E${yy}-`;
-  const { data } = await supabase.from('projects').select('e_number').like('e_number', `${prefix}%`).order('e_number', { ascending: false }).limit(1);
-  if (!data?.length) return `${prefix}001`;
-  const next = parseInt(data[0].e_number.replace(prefix, ''), 10) + 1;
+
+  // Starting number: 100 for 2027+, 001 for earlier years
+  const startNum = year >= 2027 ? 100 : 1;
+
+  const { data } = await supabase
+    .from('projects')
+    .select('e_number')
+    .like('e_number', `${prefix}%`)
+    .order('e_number', { ascending: false })
+    .limit(1);
+
+  if (!data?.length) return `${prefix}${String(startNum).padStart(3, '0')}`;
+
+  const lastNum = parseInt(data[0].e_number.replace(prefix, ''), 10);
+  if (isNaN(lastNum)) return `${prefix}${String(startNum).padStart(3, '0')}`;
+
+  const next = Math.max(lastNum + 1, startNum);
   return `${prefix}${String(next).padStart(3, '0')}`;
 }
 
