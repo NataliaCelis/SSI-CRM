@@ -8,6 +8,7 @@ import AddProjectModal from './components/AddProjectModal';
 import StaffDirectory from './components/StaffDirectory';
 import EmailTemplateModal from './components/EmailTemplateModal';
 import BidCalendar from './components/BidCalendar';
+import WorkflowTab from './components/WorkflowTab';
 
 const STAGES = ['Projects in Review','WIP','Sent','Awarded','Won','Lost','No Bid / Cancelled'];
 const STAGE_COLORS = {
@@ -237,7 +238,7 @@ export default function App() {
   const activeFilterCount = [search, filterEstimator, filterStage, filterState, filterGC, filterContact, filterAwardedGC, filterSteelSub, filterPriceMin, filterPriceMax, filterDateFrom, filterDateTo].filter(Boolean).length;
 
   const totals = {
-    sent: projects.filter(p => p.stage === 'Sent' || p.stage === 'Pending Award').reduce((a, p) => a + p.ssiPrice, 0),
+    sent: projects.filter(p => p.stage === 'Sent' || p.stage === 'Awarded').reduce((a, p) => a + p.ssiPrice, 0),
     won: projects.filter(p => p.stage === 'Won').reduce((a, p) => a + p.ssiPrice, 0),
     wip: projects.filter(p => p.stage === 'WIP').reduce((a, p) => a + p.ssiPrice, 0),
     lost: projects.filter(p => p.stage === 'Lost').reduce((a, p) => a + (p.awardedPrice || p.ssiPrice || 0), 0),
@@ -334,9 +335,10 @@ export default function App() {
           Filters {activeFilterCount > 0 && <span className="ml-1 bg-orange-600 text-white text-xs rounded-full px-1.5">{activeFilterCount}</span>}
         </button>
         <div className="flex gap-1 ml-auto">
-          <button onClick={() => setView('kanban')} className={`${btnCls} ${view === 'kanban' ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>Pipeline</button>
-          <button onClick={() => setView('table')} className={`${btnCls} ${view === 'table' ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>Table</button>
-          <button onClick={() => setView('calendar')} className={`${btnCls} ${view === 'calendar' ? 'bg-orange-500 text-white' : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>📅 Calendar</button>
+          <button onClick={() => setView('kanban')} className={`${btnCls} ${view==='kanban'?'bg-orange-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>Pipeline</button>
+          <button onClick={() => setView('table')} className={`${btnCls} ${view==='table'?'bg-orange-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>Table</button>
+          <button onClick={() => setView('calendar')} className={`${btnCls} ${view==='calendar'?'bg-orange-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>📅 Calendar</button>
+          <button onClick={() => setView('workflow')} className={`${btnCls} ${view==='workflow'?'bg-orange-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>⟶ Workflow</button>
         </div>
         <button onClick={() => setShowAdd(true)} className={`${btnCls} bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/20 font-semibold`}>
           + New Project
@@ -394,6 +396,8 @@ export default function App() {
           ? <KanbanView projects={filtered} onSelect={setSelected} />
           : view === 'calendar'
           ? <BidCalendar projects={filtered} onSelectProject={setSelected} />
+          : view === 'workflow'
+          ? <WorkflowTab projects={projects} staff={staff} />
           : <TableView projects={sorted} onSelect={setSelected} sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
         }
       </div>
