@@ -8,12 +8,13 @@ import AddProjectModal from './components/AddProjectModal';
 import StaffDirectory from './components/StaffDirectory';
 import EmailTemplateModal from './components/EmailTemplateModal';
 import BidCalendar from './components/BidCalendar';
-import WorkflowTab from './components/WorkflowTab';
+import ScrumBoard from './components/ScrumBoard';
 import IntakePanel from './components/IntakePanel';
 
-const STAGES = ['Projects in Review','WIP','Sent','GC Awarded','Won','Lost','No Bid / Cancelled'];
+const STAGES = ['Projects in Review','Open Queue','WIP','Sent','GC Awarded','Won','Lost','No Bid / Cancelled'];
 const STAGE_COLORS = {
   'Projects in Review':'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300',
+  'Open Queue':'bg-sky-100 border-sky-300 text-sky-800 dark:bg-sky-900/30 dark:border-sky-700 dark:text-sky-300',
   'Sent':'bg-green-100 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300',
   'GC Awarded':'bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-300',
   'Won':'bg-yellow-100 border-yellow-400 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-300',
@@ -22,8 +23,9 @@ const STAGE_COLORS = {
   'No Bid / Cancelled':'bg-gray-100 border-gray-300 text-gray-600 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400',
 };
 const STAGE_PILL = {
-  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','GC Awarded':'bg-purple-500',
-  'Won':'bg-yellow-500','WIP':'bg-blue-500','Lost':'bg-red-500','No Bid / Cancelled':'bg-gray-500',
+  'Projects in Review':'bg-orange-500','Open Queue':'bg-sky-500','Sent':'bg-green-500',
+  'GC Awarded':'bg-purple-500','Won':'bg-yellow-500','WIP':'bg-blue-600',
+  'Lost':'bg-red-500','No Bid / Cancelled':'bg-gray-500',
 };
 
 const fmt = n => n ? '$' + Number(n).toLocaleString() : '—';
@@ -340,9 +342,9 @@ export default function App() {
         </button>
         <div className="flex gap-1 ml-auto">
           <button onClick={() => setView('kanban')} className={`${btnCls} ${view==='kanban'?'bg-orange-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>Pipeline</button>
+          <button onClick={() => setView('board')} className={`${btnCls} ${view==='board'?'bg-orange-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>Board</button>
           <button onClick={() => setView('table')} className={`${btnCls} ${view==='table'?'bg-orange-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>Table</button>
           <button onClick={() => setView('calendar')} className={`${btnCls} ${view==='calendar'?'bg-orange-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>📅 Calendar</button>
-          <button onClick={() => setView('workflow')} className={`${btnCls} ${view==='workflow'?'bg-orange-500 text-white':'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700'}`}>⟶ Workflow</button>
         </div>
         <button onClick={() => setShowAdd(true)} className={`${btnCls} bg-orange-500 hover:bg-orange-600 text-white shadow-lg shadow-orange-500/20 font-semibold`}>
           + New Project
@@ -398,10 +400,10 @@ export default function App() {
           </div>
         ) : view === 'kanban'
           ? <KanbanView projects={filtered} onSelect={setSelected} />
+          : view === 'board'
+          ? <ScrumBoard projects={filtered} staff={staff} actions={actions} onOpenDetail={setSelected} />
           : view === 'calendar'
           ? <BidCalendar projects={filtered} onSelectProject={setSelected} />
-          : view === 'workflow'
-          ? <WorkflowTab projects={projects} staff={staff} />
           : <TableView projects={sorted} onSelect={setSelected} sortBy={sortBy} sortDir={sortDir} onSort={handleSort} />
         }
       </div>

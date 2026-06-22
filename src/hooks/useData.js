@@ -152,6 +152,8 @@ function normalizeProjects(raw) {
       intakeSources: p.intake_sources ? p.intake_sources.split(',').filter(Boolean) : [],
       projectUrl: p.project_url || '',
       intakeNotes: p.intake_notes || '',
+      claimedById: p.claimed_by || null,
+      timesReleased: p.times_released || 0,
       // Award fields — all sourced from awardObj
       awardedGC: awardObj?.awarded_gc?.name || '',
       awardedGCId: awardObj?.awarded_gc_id || '',
