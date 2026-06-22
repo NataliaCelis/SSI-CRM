@@ -9,19 +9,20 @@ import StaffDirectory from './components/StaffDirectory';
 import EmailTemplateModal from './components/EmailTemplateModal';
 import BidCalendar from './components/BidCalendar';
 import WorkflowTab from './components/WorkflowTab';
+import IntakePanel from './components/IntakePanel';
 
-const STAGES = ['Projects in Review','WIP','Sent','Awarded','Won','Lost','No Bid / Cancelled'];
+const STAGES = ['Projects in Review','WIP','Sent','GC Awarded','Won','Lost','No Bid / Cancelled'];
 const STAGE_COLORS = {
   'Projects in Review':'bg-orange-100 border-orange-300 text-orange-800 dark:bg-orange-900/30 dark:border-orange-700 dark:text-orange-300',
   'Sent':'bg-green-100 border-green-300 text-green-800 dark:bg-green-900/30 dark:border-green-700 dark:text-green-300',
-  'Awarded':'bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-300',
+  'GC Awarded':'bg-purple-100 border-purple-300 text-purple-800 dark:bg-purple-900/30 dark:border-purple-700 dark:text-purple-300',
   'Won':'bg-yellow-100 border-yellow-400 text-yellow-800 dark:bg-yellow-900/30 dark:border-yellow-700 dark:text-yellow-300',
   'WIP':'bg-blue-100 border-blue-300 text-blue-800 dark:bg-blue-900/30 dark:border-blue-700 dark:text-blue-300',
   'Lost':'bg-red-100 border-red-300 text-red-800 dark:bg-red-900/30 dark:border-red-700 dark:text-red-300',
   'No Bid / Cancelled':'bg-gray-100 border-gray-300 text-gray-600 dark:bg-gray-800 dark:border-gray-600 dark:text-gray-400',
 };
 const STAGE_PILL = {
-  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','Awarded':'bg-purple-500',
+  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','GC Awarded':'bg-purple-500',
   'Won':'bg-yellow-500','WIP':'bg-blue-500','Lost':'bg-red-500','No Bid / Cancelled':'bg-gray-500',
 };
 
@@ -118,7 +119,8 @@ function TableView({ projects, onSelect, sortBy, sortDir, onSort }) {
     { key: 'eName', label: 'E#' }, { key: 'name', label: 'Project' },
     { key: 'bidDate', label: 'Bid Date' }, { key: 'addenda', label: 'Add.' },
     { key: 'state', label: 'State' }, { key: 'type', label: 'Type' },
-    { key: 'estimator', label: 'Estimator' }, { key: 'ssiPrice', label: 'SSI Price' },
+    { key: 'estimator', label: 'Estimator' }, { key: 'tonnage', label: 'Tonnage' },
+    { key: 'squareFeet', label: 'Sq Ft' }, { key: 'ssiPrice', label: 'SSI Price' },
     { key: 'awardedPrice', label: 'Awarded Price' }, { key: 'stage', label: 'Stage' },
   ];
   return (
@@ -152,14 +154,16 @@ function TableView({ projects, onSelect, sortBy, sortDir, onSort }) {
               <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{p.state}</td>
               <td className="px-4 py-3 text-gray-600 dark:text-gray-400 text-xs">{p.type}</td>
               <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{p.estimator}</td>
+              <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{p.tonnage ? p.tonnage.toLocaleString() : '—'}</td>
+              <td className="px-4 py-3 text-gray-600 dark:text-gray-400">{p.squareFeet ? Number(p.squareFeet).toLocaleString() : '—'}</td>
               <td className="px-4 py-3 font-semibold text-gray-800 dark:text-gray-100">{fmt(p.ssiPrice)}</td>
               <td className="px-4 py-3 font-semibold text-red-500">{p.stage === 'Lost' && p.awardedPrice ? fmt(p.awardedPrice) : ''}</td>
               <td className="px-4 py-3">
-                <span className={`text-xs px-2 py-0.5 rounded-full text-white font-medium ${STAGE_PILL[p.stage]}`}>{p.stage}</span>
+                <span className={`text-xs px-2 py-0.5 rounded-full text-white font-medium ${STAGE_PILL[p.stage] || 'bg-gray-500'}`}>{p.stage}</span>
               </td>
             </tr>
           ))}
-          {!projects.length && <tr><td colSpan={10} className="px-4 py-10 text-center text-gray-400 text-sm">No projects found.</td></tr>}
+          {!projects.length && <tr><td colSpan={12} className="px-4 py-10 text-center text-gray-400 text-sm">No projects found.</td></tr>}
         </tbody>
       </table>
     </div>
@@ -238,7 +242,7 @@ export default function App() {
   const activeFilterCount = [search, filterEstimator, filterStage, filterState, filterGC, filterContact, filterAwardedGC, filterSteelSub, filterPriceMin, filterPriceMax, filterDateFrom, filterDateTo].filter(Boolean).length;
 
   const totals = {
-    sent: projects.filter(p => p.stage === 'Sent' || p.stage === 'Awarded').reduce((a, p) => a + p.ssiPrice, 0),
+    sent: projects.filter(p => p.stage === 'Sent' || p.stage === 'GC Awarded').reduce((a, p) => a + p.ssiPrice, 0),
     won: projects.filter(p => p.stage === 'Won').reduce((a, p) => a + p.ssiPrice, 0),
     wip: projects.filter(p => p.stage === 'WIP').reduce((a, p) => a + p.ssiPrice, 0),
     lost: projects.filter(p => p.stage === 'Lost').reduce((a, p) => a + (p.awardedPrice || p.ssiPrice || 0), 0),
@@ -402,7 +406,16 @@ export default function App() {
         }
       </div>
 
-      {selectedProject && (
+      {selectedProject && selectedProject.stage === 'Projects in Review' && (
+        <IntakePanel
+          project={selectedProject}
+          staff={staff}
+          onClose={() => setSelected(null)}
+          onUpdate={actions.update}
+          onUpdateStage={actions.updateStage}
+        />
+      )}
+      {selectedProject && selectedProject.stage !== 'Projects in Review' && (
         <ProjectDetail
           project={selectedProject}
           staff={staff}

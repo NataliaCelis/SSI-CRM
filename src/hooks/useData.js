@@ -148,6 +148,10 @@ function normalizeProjects(raw) {
       salesTax: p.sales_tax || '', prevWages: p.prevailing_wages || '',
       fabCost: p.fab_cost || 0, erectCost: p.erect_cost || 0,
       followUpDate: p.follow_up_date || '', prequal: p.prequal || '',
+      squareFeet: p.square_feet || 0,
+      intakeSources: p.intake_sources ? p.intake_sources.split(',').filter(Boolean) : [],
+      projectUrl: p.project_url || '',
+      intakeNotes: p.intake_notes || '',
       // Award fields — all sourced from awardObj
       awardedGC: awardObj?.awarded_gc?.name || '',
       awardedGCId: awardObj?.awarded_gc_id || '',

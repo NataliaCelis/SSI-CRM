@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../lib/AuthContext';
 import { geocodeCityState } from '../lib/supabase';
 
-const STAGES = ['Projects in Review','WIP','Sent','Awarded','Won','Lost','No Bid / Cancelled'];
+const STAGES = ['Projects in Review','WIP','Sent','GC Awarded','Won','Lost','No Bid / Cancelled'];
 const STAGE_COLORS = {
-  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','Awarded':'bg-purple-500',
+  'Projects in Review':'bg-orange-500','Sent':'bg-green-500','GC Awarded':'bg-purple-500',
   'Won':'bg-yellow-500','WIP':'bg-blue-500','Lost':'bg-red-500','No Bid / Cancelled':'bg-gray-500',
 };
 const TYPES = ['GROUND UP','RENO/EXP','ADD','BUDGET','MERGER','DESIGN/BUILD','EXPANSION','RENO','ADD/RENO','SUB FAB','DEMO/RENO','REMODEL'];

@@ -105,7 +105,7 @@ export async function updateProject(id, updates) {
     'project_name','project_type','estimator_id','city','state','bid_date','addenda',
     'tonnage','ssi_price','fab_cost','erect_cost','sales_tax',
     'prevailing_wages','distance_miles','follow_up_date','prequal',
-    'e_number','zip','deleted_at',
+    'e_number','zip','deleted_at','square_feet','intake_sources','project_url','intake_notes',
   ]);
   const { companies: _, notes: __, tasks: ___, estimator: ____, ...rest } = updates;
   const dbFields = Object.fromEntries(Object.entries(rest).filter(([k]) => VALID.has(k)));
