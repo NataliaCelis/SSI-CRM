@@ -18,6 +18,7 @@ export default function AddProjectModal({ staff, allCompanies=[], onClose, onCre
     ssiPrice:'', fabCost:'', erectCost:'', salesTax:'', prevWages:'',
     squareFeet:'', addenda:'', zip:'', distance:'', distance_miles:null,
     followUpDate:'', prequal:'',
+    intakeSources:[], projectUrl:'', intakeNotes:'',
     companies:[newGC()],
   });
   const [saving, setSaving] = useState(false);
@@ -92,6 +93,9 @@ export default function AddProjectModal({ staff, allCompanies=[], onClose, onCre
         follow_up_date: form.followUpDate || null,
         prequal: form.prequal || null,
         stage: form.stage,
+        intake_sources: (form.intakeSources||[]).join(',') || null,
+        project_url: form.projectUrl || null,
+        intake_notes: form.intakeNotes || null,
         companies: form.companies.filter(gc => gc.name.trim()),
       });
     } catch(e) { setError(e.message); setSaving(false); }
@@ -183,9 +187,48 @@ export default function AddProjectModal({ staff, allCompanies=[], onClose, onCre
               ))}
             </div>
           </section>
-        </div>
-
-        {error&&<div className="mx-6 mb-2 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{error}</div>}
+          {/* Intake Info — shown when stage is Projects in Review */}
+          {(form.stage === 'Projects in Review') && (
+          <section>
+            <div className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Intake Info</div>
+            <div className="space-y-3">
+              <div>
+                <label className={lbl}>How did this come in? (select all that apply)</label>
+                <div className="flex gap-2 flex-wrap mt-1">
+                  {['From GC','From Sean','VIP'].map(src=>(
+                    <button key={src} type="button"
+                      onClick={()=>{
+                        const sources = form.intakeSources||[];
+                        set('intakeSources', sources.includes(src)?sources.filter(s=>s!==src):[...sources,src]);
+                      }}
+                      className={`px-3 py-1.5 rounded-lg border text-xs font-semibold transition-all ${
+                        (form.intakeSources||[]).includes(src)
+                          ?'bg-orange-500 border-orange-400 text-white'
+                          :'bg-white dark:bg-gray-700 border-gray-300 dark:border-gray-600 text-gray-600 dark:text-gray-400 hover:border-orange-300'}`}>
+                      {src==='VIP'?'⭐ VIP':src==='From GC'?'🏗 From GC':'👤 From Sean'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className={lbl}>Project Drawings / Documents Link</label>
+                <div className="flex gap-2">
+                  <input type="url" value={form.projectUrl||''} onChange={e=>set('projectUrl',e.target.value)}
+                    className={ic+' flex-1'} placeholder="https://..." />
+                  {form.projectUrl && (
+                    <a href={form.projectUrl} target="_blank" rel="noopener noreferrer"
+                      className="px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white text-xs font-semibold rounded-lg">Open ↗</a>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className={lbl}>Intake Notes</label>
+                <textarea value={form.intakeNotes||''} onChange={e=>set('intakeNotes',e.target.value)} rows={3}
+                  className={ic+' resize-none'} placeholder="Why are we considering this? Any context or concerns…" />
+              </div>
+            </div>
+          </section>
+          )}
         <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex gap-3 justify-end">
           <button onClick={onClose} className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-300 transition-colors">Cancel</button>
           <button onClick={submit} disabled={saving} className="px-5 py-2 text-sm bg-orange-500 hover:bg-orange-600 disabled:opacity-60 rounded-lg font-semibold text-white transition-colors shadow-lg shadow-orange-500/20">

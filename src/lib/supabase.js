@@ -20,9 +20,11 @@ export async function signOut() {
 
 // ── Staff ─────────────────────────────────────────────────
 export async function fetchCurrentStaff(authUserId) {
-  // Use maybeSingle so a missing link doesn't throw
   const { data, error } = await supabase
-    .from('staff').select('*, staff_roles(role)').eq('auth_user_id', authUserId).maybeSingle();
+    .from('staff')
+    .select('*, staff_roles(role)')
+    .eq('auth_user_id', authUserId)
+    .maybeSingle(); // Returns null instead of error if no row found
   if (error) throw error;
   if (!data) return null;
   return { ...data, roles: data.staff_roles?.map(r => r.role) || [] };

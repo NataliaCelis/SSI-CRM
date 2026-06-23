@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import { supabase, fetchCurrentStaff } from './supabase';
 
 const AuthContext = createContext(null);
@@ -14,33 +14,59 @@ export function AuthProvider({ children }) {
     localStorage.setItem('darkMode', darkMode);
   }, [darkMode]);
 
-  async function loadStaff(authUser) {
+  const loadStaff = useCallback(async (authUser) => {
     if (!authUser) { setStaff(null); return; }
-    try {
-      const s = await fetchCurrentStaff(authUser.id);
-      setStaff(s);
-    } catch { setStaff(null); }
-  }
+    // Retry up to 3 times — Supabase can be slow on first auth event
+    for (let attempt = 0; attempt < 3; attempt++) {
+      try {
+        const s = await fetchCurrentStaff(authUser.id);
+        if (s) {
+          setStaff(s);
+          return;
+        }
+      } catch (err) {
+        if (attempt === 2) {
+          console.warn('Could not load staff record after 3 attempts:', err.message);
+          setStaff(null);
+        } else {
+          // Wait 500ms before retry
+          await new Promise(r => setTimeout(r, 500));
+        }
+      }
+    }
+  }, []);
 
   useEffect(() => {
+    // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       const u = session?.user ?? null;
       setUser(u);
       loadStaff(u).finally(() => setLoading(false));
     });
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_e, session) => {
+
+    // Listen for auth changes (login, logout, token refresh)
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       const u = session?.user ?? null;
       setUser(u);
-      loadStaff(u);
+      // Always reload staff on any auth event to ensure roles are fresh
+      await loadStaff(u);
     });
-    return () => subscription.unsubscribe();
-  }, []);
 
-  const isManager = staff?.roles?.some(r => r === 'Manager' || r === 'Sales Manager') ?? false;
-  const isFullManager = staff?.roles?.includes('Manager') ?? false;
+    return () => subscription.unsubscribe();
+  }, [loadStaff]);
+
+  // Derive permissions fresh from staff object every render
+  const roles = staff?.roles || [];
+  const isManager = roles.some(r => r === 'Manager' || r === 'Sales Manager');
+  const isFullManager = roles.includes('Manager');
 
   return (
-    <AuthContext.Provider value={{ user, staff, loading, isManager, isFullManager, darkMode, setDarkMode, reloadStaff: () => loadStaff(user) }}>
+    <AuthContext.Provider value={{
+      user, staff, loading,
+      isManager, isFullManager,
+      darkMode, setDarkMode,
+      reloadStaff: () => loadStaff(user),
+    }}>
       {children}
     </AuthContext.Provider>
   );

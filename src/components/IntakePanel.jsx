@@ -4,7 +4,7 @@ import { useAuth } from '../lib/AuthContext';
 // This panel shows when clicking a "Projects in Review" card
 // It has the intake-specific fields and Pursue/No Bid buttons
 
-export default function IntakePanel({ project, staff, onUpdate, onUpdateStage, onClose }) {
+export default function IntakePanel({ project, staff, onUpdate, onUpdateStage, onDelete, onClose }) {
   const { isManager } = useAuth();
   const [draft, setDraft] = useState({
     sources: project.intakeSources || [],
@@ -181,6 +181,15 @@ export default function IntakePanel({ project, staff, onUpdate, onUpdateStage, o
             </button>
           </div>
           {!isManager && <p className="text-xs text-center text-gray-400">Only Managers can pursue or decline projects</p>}
+          {isManager && (
+            <button onClick={async () => {
+              if (!window.confirm('Delete this project? A backup will be saved.')) return;
+              await onDelete(project.id, currentStaff?.id);
+              onClose();
+            }} className="w-full py-2 text-xs text-red-400 hover:text-red-300 transition-colors border border-red-200 dark:border-red-900 rounded-xl">
+              Delete Project (saves backup)
+            </button>
+          )}
         </div>
       </div>
     </div>

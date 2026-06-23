@@ -415,6 +415,7 @@ export default function App() {
           onClose={() => setSelected(null)}
           onUpdate={actions.update}
           onUpdateStage={actions.updateStage}
+          onDelete={async (id, deletedById) => { await actions.delete(id, deletedById); setSelected(null); }}
         />
       )}
       {selectedProject && selectedProject.stage !== 'Projects in Review' && (
