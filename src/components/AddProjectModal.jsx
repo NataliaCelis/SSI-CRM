@@ -229,6 +229,9 @@ export default function AddProjectModal({ staff, allCompanies=[], onClose, onCre
             </div>
           </section>
           )}
+        </div>{/* end overflow-y-auto */}
+
+        {error&&<div className="mx-6 mb-2 text-sm text-red-500 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg px-3 py-2">{error}</div>}
         <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-800 flex gap-3 justify-end">
           <button onClick={onClose} className="px-4 py-2 text-sm bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg text-gray-700 dark:text-gray-300 transition-colors">Cancel</button>
           <button onClick={submit} disabled={saving} className="px-5 py-2 text-sm bg-orange-500 hover:bg-orange-600 disabled:opacity-60 rounded-lg font-semibold text-white transition-colors shadow-lg shadow-orange-500/20">
